@@ -1,0 +1,95 @@
+name: Publish to Marketplace
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (leave empty to use package.json version)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (don't actually publish)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install VSCE
+      run: npm install -g @vscode/vsce
+      
+    - name: Compile TypeScript
+      run: npm run compile
+      
+    - name: Get package info
+      id: package
+      run: |
+        PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        PACKAGE_NAME=$(node -p "require('./package.json').name")
+        echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+        
+    - name: Validate version input
+      if: inputs.version != ''
+      run: |
+        INPUT_VERSION="${{ inputs.version }}"
+        PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        if [ "$INPUT_VERSION" != "$PACKAGE_VERSION" ]; then
+          echo "⚠️  Warning: Input version ($INPUT_VERSION) differs from package.json version ($PACKAGE_VERSION)"
+          echo "Will use input version: $INPUT_VERSION"
+        fi
+        
+    - name: Package extension
+      run: npm run package
+      
+    - name: List package contents (dry run)
+      if: inputs.dry_run
+      run: |
+        echo "📦 Dry run mode - would publish the following:"
+        echo "Extension: ${{ steps.package.outputs.name }}"
+        echo "Version: ${{ steps.package.outputs.version }}"
+        echo "Package file:"
+        ls -la *.vsix
+        echo ""
+        echo "Package contents:"
+        vsce ls
+        
+    - name: Publish to VS Code Marketplace
+      if: !inputs.dry_run
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          echo "Publishing with specified version: ${{ inputs.version }}"
+          vsce publish ${{ inputs.version }} --no-dependencies
+        else
+          echo "Publishing with package.json version: ${{ steps.package.outputs.version }}"
+          vsce publish --no-dependencies
+        fi
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        
+    - name: Publish success notification
+      if: !inputs.dry_run
+      run: |
+        PUBLISHED_VERSION="${{ inputs.version || steps.package.outputs.version }}"
+        echo "🎉 Successfully published ${{ steps.package.outputs.name }} v$PUBLISHED_VERSION to VS Code Marketplace!"
+        echo "📦 Extension will be available at: https://marketplace.visualstudio.com/items?itemName=yensubldg.${{ steps.package.outputs.name }}"
+        echo "⏱️  Note: It may take a few minutes for the extension to appear in the marketplace."

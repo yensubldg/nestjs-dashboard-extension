@@ -147,3 +147,55 @@ jobs:
             3. Click on the "..." menu
             4. Select "Install from VSIX..."
             5. Choose the downloaded file
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')
+    needs: [test, package, release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install VSCE
+        run: npm install -g @vscode/vsce
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Get package info
+        id: package
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Verify package.json version matches tag
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: package.json version ($PACKAGE_VERSION) does not match tag version ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "✅ Version check passed: $PACKAGE_VERSION"
+
+      - name: Publish to VS Code Marketplace
+        run: vsce publish --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish success notification
+        run: |
+          echo "🎉 Successfully published ${{ steps.package.outputs.name }} v${{ steps.package.outputs.version }} to VS Code Marketplace!"
+          echo "📦 Extension will be available at: https://marketplace.visualstudio.com/items?itemName=yensubldg.${{ steps.package.outputs.name }}"
