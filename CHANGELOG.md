@@ -4,6 +4,12 @@ All notable changes to the "nestjs-dashboard" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.4] - 2025-06-15
+
+### Changed
+
+- Updated `README.md` with the latest release information and general improvements.
+
 ## [0.0.3] - 2025-06-15
 
 ### Added

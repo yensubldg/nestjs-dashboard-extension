@@ -112,6 +112,26 @@ Found a bug? [Report it here](https://github.com/yensubldg/nestjs-dashboard-exte
 
 ## 🗂️ Release Notes
 
+### 0.0.4 (Latest Release)
+
+- 📝 **Documentation**: Updated README.md with the latest release information and general improvements.
+
+### 0.0.3
+
+- ✨ **TypeORM Entity Detection**: Automatically discovers and displays TypeORM entities.
+- 🔍 **Property Visualization**: Shows entity properties, types, and decorators.
+- 🔗 **Relationship Mapping**: Identifies and displays entity relationships (OneToMany, ManyToOne, etc.).
+- 🎨 **Decorator Recognition**: Highlights TypeORM decorators like `@PrimaryGeneratedColumn`, `@Column`.
+- 🚀 **Enhanced Navigation**: Click to expand entity details and jump to source code.
+- 🔧 **CI/CD Automation**: Implemented GitHub Actions for automated building, testing, and releases.
+- 📦 **Marketplace Publishing**: Added automated publishing to VS Code Marketplace on new version tags.
+
+### 0.0.2
+
+- 🛠️ **Build Process**: Switched to esbuild for faster bundling and development.
+- ⚙️ **Performance**: Improved initial parsing speed for large projects.
+- 🐛 **Bug Fixes**: Addressed minor parsing issues and improved stability.
+
 ### 0.0.1 (Initial Release)
 
 - ✅ Core API endpoint discovery

@@ -2,7 +2,7 @@
   "name": "nestjs-dashboard",
   "displayName": "NestJS Dashboard",
   "description": "A VSCode extension to display NestJS HTTP API endpoints in a dashboard view",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "yensubldg",
   "author": {
     "name": "yensubldg",
