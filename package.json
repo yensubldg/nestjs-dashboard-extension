@@ -1,0 +1,66 @@
+{
+  "name": "nestjs-dashboard",
+  "displayName": "NestJS Dashboard",
+  "description": "A VSCode extension to display NestJS HTTP API endpoints in a dashboard view",
+  "version": "0.0.1",
+  "publisher": "yensubldg",
+  "author": {
+    "name": "yensubldg",
+    "email": "windev.thang@gmail.com"
+  },
+  "icon": "media/logo.png",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:apiEndpoints",
+    "onCommand:nestjsDashboard.refresh"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nestjsDashboard.refresh",
+        "title": "Refresh API Endpoints"
+      },
+      {
+        "command": "nestjsDashboard.openEndpoint",
+        "title": "Open Endpoint"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nestjsDashboard",
+          "title": "NestJS Dashboard",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "nestjsDashboard": [
+        {
+          "id": "apiEndpoints",
+          "name": "API Endpoints"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "ts-morph": "^13.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.2.3",
+    "@types/node": "^14.14.37",
+    "@types/vscode": "^1.50.0"
+  }
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Background circle -->
+  <circle cx="12" cy="12" r="11" fill="#E0234E" stroke="#fff" stroke-width="1"/>
+  
+  <!-- NestJS-inspired design with API endpoints -->
+  <g fill="#fff">
+    <!-- Central node -->
+    <circle cx="12" cy="12" r="2"/>
+    
+    <!-- API endpoint nodes -->
+    <circle cx="7" cy="8" r="1.5"/>
+    <circle cx="17" cy="8" r="1.5"/>
+    <circle cx="7" cy="16" r="1.5"/>
+    <circle cx="17" cy="16" r="1.5"/>
+    
+    <!-- Connection lines -->
+    <line x1="12" y1="12" x2="7" y2="8" stroke="#fff" stroke-width="1.5"/>
+    <line x1="12" y1="12" x2="17" y2="8" stroke="#fff" stroke-width="1.5"/>
+    <line x1="12" y1="12" x2="7" y2="16" stroke="#fff" stroke-width="1.5"/>
+    <line x1="12" y1="12" x2="17" y2="16" stroke="#fff" stroke-width="1.5"/>
+    
+    <!-- HTTP method indicators -->
+    <text x="7" y="6" font-family="Arial" font-size="3" text-anchor="middle" fill="#fff">G</text>
+    <text x="17" y="6" font-family="Arial" font-size="3" text-anchor="middle" fill="#fff">P</text>
+    <text x="7" y="19" font-family="Arial" font-size="3" text-anchor="middle" fill="#fff">U</text>
+    <text x="17" y="19" font-family="Arial" font-size="3" text-anchor="middle" fill="#fff">D</text>
+  </g>
+</svg> 
