@@ -6,7 +6,6 @@ node_modules
 .vscode
 node_modules
 out/
-src/
 tsconfig.json
 webpack.config.js
 esbuild.js

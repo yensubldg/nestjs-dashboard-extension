@@ -12,6 +12,20 @@ export interface EndpointInfo {
   lineNumber: number;
 }
 
+export interface EntityInfo {
+  name: string;
+  tableName?: string;
+  properties: PropertyInfo[];
+  filePath: string;
+  lineNumber: number;
+}
+
+export interface PropertyInfo {
+  name: string;
+  type: string;
+  decorators: string[];
+}
+
 export class NestParser {
   parseEndpoints(): EndpointInfo[] {
     const endpoints: EndpointInfo[] = [];
@@ -96,5 +110,73 @@ export class NestParser {
       });
 
     return endpoints;
+  }
+
+  parseEntities(): EntityInfo[] {
+    const entities: EntityInfo[] = [];
+    const folders = workspace.workspaceFolders;
+    if (!folders) {
+      return entities;
+    }
+    const rootPath = folders[0].uri.fsPath;
+
+    const project = new Project({
+      tsConfigFilePath: path.join(rootPath, "tsconfig.json"),
+      skipAddingFilesFromTsConfig: true,
+    });
+
+    const patterns = ["src/**/*.ts", "apps/**/*.ts", "libs/**/*.ts"];
+    patterns.forEach((pattern) => {
+      project.addSourceFilesAtPaths(path.join(rootPath, pattern));
+    });
+
+    project
+      .getSourceFiles()
+      .forEach((sourceFile: import("ts-morph").SourceFile) => {
+        sourceFile
+          .getClasses()
+          .forEach((cls: import("ts-morph").ClassDeclaration) => {
+            const entityDecorator = cls.getDecorator("Entity");
+            if (entityDecorator) {
+              let tableName: string | undefined;
+              const args = entityDecorator.getArguments();
+              if (args.length > 0) {
+                const arg = args[0];
+                if (arg.getKind() === SyntaxKind.StringLiteral) {
+                  tableName = (arg as StringLiteral).getLiteralText();
+                }
+              }
+
+              const properties: PropertyInfo[] = [];
+              cls.getProperties().forEach((prop) => {
+                const decorators: string[] = [];
+                prop.getDecorators().forEach((decorator) => {
+                  decorators.push(decorator.getName());
+                });
+
+                const typeText =
+                  prop.getTypeNode()?.getText() ||
+                  prop.getType().getText() ||
+                  "any";
+
+                properties.push({
+                  name: prop.getName(),
+                  type: typeText,
+                  decorators,
+                });
+              });
+
+              entities.push({
+                name: cls.getName() || "",
+                tableName,
+                properties,
+                filePath: sourceFile.getFilePath(),
+                lineNumber: cls.getStartLineNumber(),
+              });
+            }
+          });
+      });
+
+    return entities;
   }
 }

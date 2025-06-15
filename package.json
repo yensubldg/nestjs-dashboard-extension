@@ -2,7 +2,7 @@
   "name": "nestjs-dashboard",
   "displayName": "NestJS Dashboard",
   "description": "A VSCode extension to display NestJS HTTP API endpoints in a dashboard view",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "yensubldg",
   "author": {
     "name": "yensubldg",
@@ -32,8 +32,13 @@
   },
   "homepage": "https://github.com/yensubldg/nestjs-dashboard-extension#readme",
   "activationEvents": [
+    "onLanguage:typescript",
     "onView:apiEndpoints",
-    "onCommand:nestjsDashboard.refresh"
+    "onView:entities",
+    "onCommand:nestjsDashboard.refresh",
+    "onCommand:nestjsDashboard.openEndpoint",
+    "onCommand:nestjsDashboard.openEntity",
+    "onCommand:nestjsDashboard.expandAndOpenEntity"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -45,6 +50,14 @@
       {
         "command": "nestjsDashboard.openEndpoint",
         "title": "Open Endpoint"
+      },
+      {
+        "command": "nestjsDashboard.openEntity",
+        "title": "Open Entity"
+      },
+      {
+        "command": "nestjsDashboard.expandAndOpenEntity",
+        "title": "Expand and Open Entity"
       }
     ],
     "viewsContainers": {
@@ -61,6 +74,10 @@
         {
           "id": "apiEndpoints",
           "name": "API Endpoints"
+        },
+        {
+          "id": "entities",
+          "name": "Entities"
         }
       ]
     }
