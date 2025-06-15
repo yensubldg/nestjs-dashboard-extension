@@ -81,14 +81,15 @@
         }
       ]
     }
-  },
-  "scripts": {
+  },  "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc -w -p ./",
     "clean": "rimraf dist",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'",
     "package": "vsce package",
     "publish": "vsce publish"
   },
