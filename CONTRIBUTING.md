@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the NestJS Dashboard extension! We welcome contributions from the community and appreciate your help in making this extension better.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
@@ -15,11 +15,11 @@ Thank you for your interest in contributing to the NestJS Dashboard extension! W
 - [Style Guidelines](#style-guidelines)
 - [Troubleshooting](#troubleshooting)
 
-## 🤝 Code of Conduct
+## Code of Conduct
 
 This project adheres to a code of conduct that we expect all contributors to follow. Please be respectful, inclusive, and considerate in all interactions.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -41,7 +41,7 @@ We welcome various types of contributions:
 - 🎨 **UI/UX Improvements**: Enhance the user experience
 - 🧪 **Testing**: Add or improve test coverage
 
-## 💻 Development Setup
+## Development Setup
 
 ### 1. Fork and Clone
 
@@ -78,7 +78,7 @@ npm run compile
 - Press `F5` in VS Code to launch a new Extension Development Host window
 - Open a NestJS project in the new window to test the extension
 
-## 🔄 Development Workflow
+## Development Workflow
 
 ### Creating a Feature Branch
 
@@ -116,7 +116,7 @@ git commit -m "fix(tree-view): resolve icon positioning issue"
 git commit -m "docs(readme): update installation instructions"
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 nestjs-dashboard/
@@ -144,7 +144,7 @@ nestjs-dashboard/
 └── README.md                   # Project documentation
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing
 
@@ -175,7 +175,7 @@ npm run vscode:prepublish
 ls -la dist/
 ```
 
-## 📤 Submitting Changes
+## Submitting Changes
 
 ### Before Submitting
 
@@ -239,7 +239,7 @@ Brief description of what this PR does.
 - [ ] No console.log statements left in code
 ```
 
-## 🚢 Release Process
+## Release Process
 
 Releases are managed by maintainers:
 
@@ -248,7 +248,7 @@ Releases are managed by maintainers:
 3. **Create Release**: Tag and create GitHub release
 4. **Marketplace**: Publish to VS Code Marketplace
 
-## 📏 Style Guidelines
+## Style Guidelines
 
 ### TypeScript/JavaScript
 
@@ -309,7 +309,7 @@ try {
 - **Debounce** file system watchers
 - **Use async/await** for I/O operations
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -347,14 +347,14 @@ npx tsc --noEmit
 - **Discussions**: Community discussions and feature requests
 - **Email**: Contact maintainers for urgent issues
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [VS Code Extension API](https://code.visualstudio.com/api)
 - [VS Code Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [NestJS Documentation](https://nestjs.com/)
 
-## 🙏 Recognition
+## Recognition
 
 All contributors will be recognized in:
 
