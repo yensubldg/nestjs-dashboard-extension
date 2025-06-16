@@ -4,7 +4,14 @@ import {
   CallGraphNode,
   CallGraphEdge,
 } from "../models/CallGraphModels";
+import {
+  SequenceDiagram,
+  SequenceMessage,
+  SequenceNote,
+  SequenceParticipant,
+} from "../models/SequenceModels";
 import { GraphTraversal } from "../utils/GraphTraversal";
+import { SequenceHelpers } from "../utils/SequenceHelpers";
 
 export class MermaidCallGraphWebview {
   private panel: vscode.WebviewPanel | undefined;
@@ -50,7 +57,9 @@ export class MermaidCallGraphWebview {
             this.openFile(message.filePath, message.lineNumber);
             break;
           case "exportDiagram":
-            this.exportDiagram(message.svg, message.format);
+            const content = message.data || message.svg;
+            const filename = message.filename || "call-graph";
+            this.exportDiagram(content, message.format, filename);
             break;
           case "copyDiagram":
             this.copyDiagramCode(message.mermaidCode);
@@ -434,157 +443,145 @@ export class MermaidCallGraphWebview {
     <title>${title}</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
     <style>
+        :root {
+            --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            --vscode-font-size: 13px;
+            --vscode-foreground: #cccccc;
+            --vscode-background: #1e1e1e;
+            --vscode-button-background: #0e639c;
+            --vscode-button-foreground: #ffffff;
+            --vscode-button-hoverBackground: #1177bb;
+            --vscode-inputValidation-errorBackground: #5a1d1d;
+            --vscode-inputValidation-errorBorder: #be1100;
+            --vscode-inputValidation-warningBackground: #5a5a1d;
+            --vscode-inputValidation-warningBorder: #be9100;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-background);
             margin: 0;
             padding: 20px;
-            background-color: var(--vscode-editor-background);
-            color: var(--vscode-editor-foreground);
+            line-height: 1.6;
         }
-        
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            padding: 10px;
-            background-color: var(--vscode-editorWidget-background);
-            border-radius: 6px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
         }
-        
+
         .title {
-            font-size: 24px;
-            font-weight: 600;
             margin: 0;
+            font-size: 1.5em;
+            font-weight: 600;
         }
-        
+
         .actions {
             display: flex;
             gap: 10px;
         }
-        
+
         .btn {
-            padding: 8px 16px;
             background-color: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
             border: none;
+            padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
+            transition: background-color 0.2s;
         }
-        
+
         .btn:hover {
             background-color: var(--vscode-button-hoverBackground);
         }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
+
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
         .stat-card {
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
             padding: 15px;
-            background-color: var(--vscode-editorWidget-background);
-            border-radius: 8px;
-            border-left: 4px solid var(--vscode-focusBorder);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
+            border-left: 4px solid #007acc;
         }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, transparent 40%, var(--vscode-focusBorder) 50%, transparent 60%);
-            opacity: 0.1;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
+
         .stat-title {
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--vscode-descriptionForeground);
+            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            opacity: 0.8;
         }
-        
+
         .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--vscode-editor-foreground);
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
         }
-        
+
         .complexity-indicator {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 8px;
-            font-size: 12px;
+            gap: 6px;
+            font-size: 11px;
         }
-        
+
         .complexity-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
         }
-        
-        .complexity-low { background-color: #4caf50; }
-        .complexity-medium { background-color: #ff9800; }
-        .complexity-high { background-color: #f44336; }
-        
+
+        .complexity-low { background-color: #22c55e; }
+        .complexity-medium { background-color: #eab308; }
+        .complexity-high { background-color: #ef4444; }
+
         .diagram-container {
-            background-color: var(--vscode-editor-background);
-            border: 1px solid var(--vscode-editorWidget-border);
-            border-radius: 6px;
+            background-color: #ffffff;
+            border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
             overflow-x: auto;
         }
-        
+
         .mermaid {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 400px;
         }
-        
+
         .warnings {
-            margin-top: 20px;
+            margin-bottom: 20px;
         }
-        
+
         .warning {
-            padding: 12px;
             background-color: var(--vscode-inputValidation-warningBackground);
             border: 1px solid var(--vscode-inputValidation-warningBorder);
-            border-radius: 6px;
+            border-radius: 4px;
+            padding: 10px;
             margin-bottom: 10px;
         }
-        
+
         .warning-title {
             font-weight: 600;
             margin-bottom: 5px;
         }
-        
+
         .code-block {
-            background-color: var(--vscode-textCodeBlock-background);
-            border: 1px solid var(--vscode-editorWidget-border);
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
             border-radius: 4px;
             padding: 15px;
             margin-top: 20px;
@@ -593,7 +590,7 @@ export class MermaidCallGraphWebview {
             overflow-x: auto;
             white-space: pre-wrap;
         }
-        
+
         .hidden {
             display: none;
         }
@@ -601,12 +598,12 @@ export class MermaidCallGraphWebview {
 </head>
 <body>
     <div class="header">
-        <h1 class="title">${title}</h1>
+        <h1 class="title">🔄 ${title}</h1>
         <div class="actions">
-            <button class="btn" onclick="exportDiagram('svg')">Export SVG</button>
-            <button class="btn" onclick="exportDiagram('png')">Export PNG</button>
-            <button class="btn" onclick="copyDiagram()">Copy Code</button>
-            <button class="btn" onclick="toggleCode()">Toggle Code</button>
+            <button class="btn" onclick="exportDiagram('svg')">📄 Export SVG</button>
+            <button class="btn" onclick="exportDiagram('png')">🖼️ Export PNG</button>
+            <button class="btn" onclick="copyDiagram()">📋 Copy Code</button>
+            <button class="btn" onclick="toggleCode()">🔍 Toggle Code</button>
         </div>
     </div>
     
@@ -745,11 +742,109 @@ ${mermaidCode}
                 return;
             }
             
-            vscode.postMessage({
-                command: 'exportDiagram',
-                svg: svg.outerHTML,
-                format: format
-            });
+            if (format === 'png') {
+                // Convert SVG to high-quality PNG
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                // Get actual SVG dimensions from the rendered element
+                const svgRect = svg.getBoundingClientRect();
+                let svgWidth = Math.max(
+                    parseInt(svg.getAttribute('width')) || 0,
+                    parseInt(svg.style.width) || 0,
+                    svgRect.width || 0,
+                    1200 // Minimum width for quality
+                );
+                let svgHeight = Math.max(
+                    parseInt(svg.getAttribute('height')) || 0,
+                    parseInt(svg.style.height) || 0,
+                    svgRect.height || 0,
+                    800 // Minimum height for quality
+                );
+                
+                // Use very high scaling for crisp output
+                const baseScale = 4; // 4x base scaling for high quality
+                const dpiScale = window.devicePixelRatio || 1;
+                const finalScale = Math.max(baseScale, dpiScale * 2);
+                
+                // Set actual canvas dimensions (what gets saved)
+                canvas.width = svgWidth * finalScale;
+                canvas.height = svgHeight * finalScale;
+                
+                // Scale the drawing context
+                ctx.scale(finalScale, finalScale);
+                
+                // Enable highest quality settings
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.textRenderingOptimization = 'optimizeQuality';
+                
+                // Fill with white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, svgWidth, svgHeight);
+                
+                // Create optimized SVG with proper styling
+                const svgClone = svg.cloneNode(true);
+                svgClone.setAttribute('width', svgWidth.toString());
+                svgClone.setAttribute('height', svgHeight.toString());
+                svgClone.setAttribute('viewBox', '0 0 ' + svgWidth + ' ' + svgHeight);
+                
+                const svgString = new XMLSerializer().serializeToString(svgClone);
+                const svgBlob = new Blob([svgString], {
+                    type: 'image/svg+xml;charset=utf-8'
+                });
+                const svgUrl = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    // Clear and redraw with white background
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, svgWidth, svgHeight);
+                    
+                    // Draw the SVG image
+                    ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                    
+                    // Convert to blob with highest quality
+                    canvas.toBlob(function(blob) {
+                        if (blob) {
+                            const reader = new FileReader();
+                            reader.onload = function() {
+                                vscode.postMessage({
+                                    command: 'exportDiagram',
+                                    data: reader.result,
+                                    format: format,
+                                    filename: 'call-graph'
+                                });
+                            };
+                            reader.readAsDataURL(blob);
+                        }
+                    }, 'image/png', 1.0);
+                    
+                    URL.revokeObjectURL(svgUrl);
+                };
+                
+                img.onerror = function(e) {
+                    console.error('Failed to load SVG for PNG conversion:', e);
+                    URL.revokeObjectURL(svgUrl);
+                    // Fallback: try direct SVG export
+                    vscode.postMessage({
+                        command: 'exportDiagram',
+                        svg: svg.outerHTML,
+                        format: 'svg',
+                        filename: 'call-graph'
+                    });
+                };
+                
+                img.src = svgUrl;
+            } else {
+                // SVG export
+                vscode.postMessage({
+                    command: 'exportDiagram',
+                    svg: svg.outerHTML,
+                    format: format,
+                    filename: 'call-graph'
+                });
+            }
         }
         
         // Copy diagram code function
@@ -800,12 +895,14 @@ ${mermaidCode}
    * Export diagram
    */
   private async exportDiagram(
-    svgContent: string,
-    format: string
+    content: string,
+    format: string,
+    filename?: string
   ): Promise<void> {
     try {
+      const defaultFilename = filename || "diagram";
       const saveOptions: vscode.SaveDialogOptions = {
-        defaultUri: vscode.Uri.file(`call-graph.${format}`),
+        defaultUri: vscode.Uri.file(`${defaultFilename}.${format}`),
         filters: {
           Images: [format],
         },
@@ -813,12 +910,18 @@ ${mermaidCode}
 
       const uri = await vscode.window.showSaveDialog(saveOptions);
       if (uri) {
-        // For now, just save SVG content directly
-        // In a full implementation, you might want to convert SVG to PNG
-        await vscode.workspace.fs.writeFile(
-          uri,
-          Buffer.from(svgContent, "utf8")
-        );
+        let buffer: Buffer;
+
+        if (format === "png" && content.startsWith("data:image/png;base64,")) {
+          // Handle PNG data URL
+          const base64Data = content.replace("data:image/png;base64,", "");
+          buffer = Buffer.from(base64Data, "base64");
+        } else {
+          // Handle SVG content
+          buffer = Buffer.from(content, "utf8");
+        }
+
+        await vscode.workspace.fs.writeFile(uri, buffer);
         vscode.window.showInformationMessage(
           `Diagram exported to ${uri.fsPath}`
         );
@@ -838,6 +941,573 @@ ${mermaidCode}
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to copy code: ${error}`);
     }
+  }
+
+  /**
+   * Show sequence diagram
+   */
+  public showSequence(
+    sequenceDiagram: SequenceDiagram,
+    title: string = "Sequence Diagram"
+  ): void {
+    if (this.panel) {
+      this.panel.reveal(vscode.ViewColumn.One);
+    } else {
+      this.panel = vscode.window.createWebviewPanel(
+        "sequenceDiagram",
+        title,
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+          localResourceRoots: [this.extensionUri],
+        }
+      );
+
+      this.panel.onDidDispose(() => {
+        this.panel = undefined;
+      });
+
+      this.panel.webview.onDidReceiveMessage((message) => {
+        switch (message.command) {
+          case "openFile":
+            this.openFile(message.filePath, message.lineNumber);
+            break;
+          case "exportDiagram":
+            const content = message.data || message.svg;
+            const filename = message.filename || "sequence-diagram";
+            this.exportDiagram(content, message.format, filename);
+            break;
+          case "copyDiagram":
+            this.copyDiagramCode(message.mermaidCode);
+            break;
+        }
+      });
+    }
+
+    this.updateSequenceWebviewContent(sequenceDiagram, title);
+  }
+
+  /**
+   * Update webview content with sequence diagram
+   */
+  private updateSequenceWebviewContent(
+    sequenceDiagram: SequenceDiagram,
+    title: string
+  ): void {
+    if (!this.panel) return;
+
+    const mermaidCode = this.generateMermaidSequence(sequenceDiagram);
+    const stats = SequenceHelpers.getSequenceStatistics(sequenceDiagram);
+    const validationErrors =
+      SequenceHelpers.validateSequenceDiagram(sequenceDiagram);
+
+    this.panel.title = title;
+    this.panel.webview.html = this.getSequenceWebviewContent(
+      mermaidCode,
+      title,
+      stats,
+      validationErrors
+    );
+  }
+
+  /**
+   * Generate Mermaid sequence diagram
+   */
+  public generateMermaidSequence(sequenceDiagram: SequenceDiagram): string {
+    const lines: string[] = [];
+
+    lines.push("sequenceDiagram");
+    lines.push("    autonumber");
+    lines.push("");
+
+    // Add participants
+    for (const participant of sequenceDiagram.participants) {
+      const sanitizedId = this.sanitizeParticipantId(participant.id);
+      const sanitizedName = SequenceHelpers.sanitizeText(participant.name);
+
+      if (
+        participant.name !== participant.id &&
+        sanitizedName !== sanitizedId
+      ) {
+        lines.push(`    participant ${sanitizedId} as ${sanitizedName}`);
+      } else {
+        lines.push(`    participant ${sanitizedId}`);
+      }
+    }
+
+    lines.push("");
+
+    // Sort messages and notes by order
+    const sortedItems = SequenceHelpers.sortMessagesAndNotes(
+      sequenceDiagram.messages,
+      sequenceDiagram.notes
+    );
+
+    // Add messages and notes
+    for (const item of sortedItems) {
+      if (item.itemType === "message") {
+        const message = item as SequenceMessage;
+        const arrow = this.getSequenceArrow(message.type);
+        const sanitizedMessage = SequenceHelpers.sanitizeText(message.message);
+        const fromId = this.sanitizeParticipantId(message.from);
+        const toId = this.sanitizeParticipantId(message.to);
+        lines.push(`    ${fromId}${arrow}${toId}: ${sanitizedMessage}`);
+
+        // Note: Activation/deactivation removed for syntax compatibility
+      } else if (item.itemType === "note") {
+        const note = item as SequenceNote;
+        const sanitizedContent = SequenceHelpers.sanitizeText(note.content);
+        const participantId = this.sanitizeParticipantId(note.participant);
+        lines.push(`    Note over ${participantId}: ${sanitizedContent}`);
+      }
+    }
+
+    // Note: Activation/deactivation logic removed for syntax compatibility
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Get sequence arrow based on message type
+   */
+  private getSequenceArrow(messageType: string): string {
+    switch (messageType) {
+      case "sync":
+        return "->>";
+      case "async":
+        return "-)>";
+      case "return":
+        return "-->>";
+      default:
+        return "->";
+    }
+  }
+
+  /**
+   * Sanitize participant ID for Mermaid syntax
+   */
+  private sanitizeParticipantId(id: string): string {
+    return id.replace(/[^a-zA-Z0-9_]/g, "_");
+  }
+
+  /**
+   * Get sequence webview content
+   */
+  private getSequenceWebviewContent(
+    mermaidCode: string,
+    title: string,
+    stats: any,
+    validationErrors: string[]
+  ): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            --vscode-font-size: 13px;
+            --vscode-foreground: #cccccc;
+            --vscode-background: #1e1e1e;
+            --vscode-button-background: #0e639c;
+            --vscode-button-foreground: #ffffff;
+            --vscode-button-hoverBackground: #1177bb;
+            --vscode-inputValidation-errorBackground: #5a1d1d;
+            --vscode-inputValidation-errorBorder: #be1100;
+        }
+
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-background);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #007acc;
+        }
+
+        .stat-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .complexity-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+        }
+
+        .complexity-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .complexity-low { background-color: #22c55e; }
+        .complexity-medium { background-color: #eab308; }
+        .complexity-high { background-color: #ef4444; }
+
+        .warnings {
+            margin-bottom: 20px;
+        }
+
+        .warning {
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .warning-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .diagram-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+
+        .code-block {
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">📈 ${title}</h1>
+        <div class="actions">
+            <button class="btn" onclick="exportDiagram('svg')">📄 Export SVG</button>
+            <button class="btn" onclick="exportDiagram('png')">🖼️ Export PNG</button>
+            <button class="btn" onclick="copyDiagram()">📋 Copy Code</button>
+            <button class="btn" onclick="toggleCode()">🔍 Toggle Code</button>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-title">👥 Participants</div>
+            <div class="stat-value">${stats.totalParticipants}</div>
+            <div class="complexity-indicator">
+                <div class="complexity-dot ${this.getComplexityClass(
+                  stats.totalParticipants,
+                  "participants"
+                )}"></div>
+                <span>${this.getComplexityLabel(
+                  stats.totalParticipants,
+                  "participants"
+                )}</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">💬 Messages</div>
+            <div class="stat-value">${stats.totalMessages}</div>
+            <div class="complexity-indicator">
+                <div class="complexity-dot ${this.getComplexityClass(
+                  stats.totalMessages,
+                  "messages"
+                )}"></div>
+                <span>${this.getComplexityLabel(
+                  stats.totalMessages,
+                  "messages"
+                )}</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">📝 Notes</div>
+            <div class="stat-value">${stats.totalNotes}</div>
+            <div class="complexity-indicator">
+                <div class="complexity-dot complexity-low"></div>
+                <span>Info</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">⏱️ Est. Duration</div>
+            <div class="stat-value">${stats.estimatedDuration}ms</div>
+            <div class="complexity-indicator">
+                <div class="complexity-dot ${this.getComplexityClass(
+                  stats.estimatedDuration,
+                  "duration"
+                )}"></div>
+                <span>${this.getComplexityLabel(
+                  stats.estimatedDuration,
+                  "duration"
+                )}</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">🔄 Complexity</div>
+            <div class="stat-value">${stats.complexity.level}</div>
+            <div class="complexity-indicator">
+                <div class="complexity-dot complexity-${stats.complexity.level.toLowerCase()}"></div>
+                <span>Score: ${stats.complexity.score}</span>
+            </div>
+        </div>
+    </div>
+    
+    ${
+      validationErrors.length > 0
+        ? `
+    <div class="warnings">
+        <div class="warning">
+            <div class="warning-title">⚠️ Validation Issues</div>
+            <ul>
+                ${validationErrors.map((error) => `<li>${error}</li>`).join("")}
+            </ul>
+        </div>
+    </div>
+    `
+        : ""
+    }
+    
+    <div class="diagram-container">
+        <div class="mermaid" id="mermaid-diagram">
+${mermaidCode}
+        </div>
+    </div>
+    
+    <div class="code-block hidden" id="code-block">${mermaidCode}</div>
+    
+    <script>
+        const vscode = acquireVsCodeApi();
+        
+        // Initialize Mermaid with sequence theme
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            sequence: {
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35,
+                mirrorActors: true,
+                bottomMarginAdj: 1,
+                useMaxWidth: true,
+                rightAngles: false,
+                showSequenceNumbers: true
+            },
+            themeVariables: {
+                background: '#ffffff',
+                primaryColor: '#3b82f6',
+                primaryTextColor: '#1f2937',
+                primaryBorderColor: '#3b82f6',
+                lineColor: '#6b7280',
+                secondaryColor: '#f3f4f6',
+                tertiaryColor: '#e5e7eb',
+                actorBkg: '#dbeafe',
+                actorBorder: '#3b82f6',
+                actorTextColor: '#1f2937',
+                activationBkgColor: '#fef3c7',
+                activationBorderColor: '#f59e0b',
+                sequenceNumberColor: '#ffffff'
+            }
+        });
+        
+        // Function to open file (called from Mermaid click events)
+        window.openFile = function(filePath, lineNumber) {
+            vscode.postMessage({
+                command: 'openFile',
+                filePath: filePath,
+                lineNumber: lineNumber
+            });
+        };
+        
+        // Export diagram function
+        function exportDiagram(format) {
+            const svg = document.querySelector('#mermaid-diagram svg');
+            if (!svg) {
+                console.error('No SVG found to export');
+                return;
+            }
+            
+                         if (format === 'png') {
+                 // Convert SVG to high-quality PNG
+                 const canvas = document.createElement('canvas');
+                 const ctx = canvas.getContext('2d');
+                 const img = new Image();
+                 
+                 // Get SVG dimensions and ensure minimum quality size
+                 const svgRect = svg.getBoundingClientRect();
+                 const svgWidth = Math.max(parseInt(svg.getAttribute('width')) || svgRect.width || 800, 1200);
+                 const svgHeight = Math.max(parseInt(svg.getAttribute('height')) || svgRect.height || 600, 800);
+                 
+                 // Use 4x scaling for very high quality
+                 const qualityScale = 4;
+                 
+                 // Set canvas dimensions
+                 canvas.width = svgWidth * qualityScale;
+                 canvas.height = svgHeight * qualityScale;
+                 
+                 // Scale context
+                 ctx.scale(qualityScale, qualityScale);
+                 ctx.imageSmoothingEnabled = true;
+                 ctx.imageSmoothingQuality = 'high';
+                 
+                 // White background
+                 ctx.fillStyle = '#ffffff';
+                 ctx.fillRect(0, 0, svgWidth, svgHeight);
+                 
+                 // Create SVG with proper dimensions
+                 const svgClone = svg.cloneNode(true);
+                 svgClone.setAttribute('width', svgWidth.toString());
+                 svgClone.setAttribute('height', svgHeight.toString());
+                 
+                 const svgString = new XMLSerializer().serializeToString(svgClone);
+                 const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+                 const svgUrl = URL.createObjectURL(svgBlob);
+                 
+                 img.onload = function() {
+                     ctx.fillStyle = '#ffffff';
+                     ctx.fillRect(0, 0, svgWidth, svgHeight);
+                     ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                     
+                     canvas.toBlob(function(blob) {
+                         if (blob) {
+                             const reader = new FileReader();
+                             reader.onload = function() {
+                                 vscode.postMessage({
+                                     command: 'exportDiagram',
+                                     data: reader.result,
+                                     format: format,
+                                     filename: 'sequence-diagram'
+                                 });
+                             };
+                             reader.readAsDataURL(blob);
+                         }
+                     }, 'image/png', 1.0);
+                     
+                     URL.revokeObjectURL(svgUrl);
+                 };
+                 
+                 img.onerror = function() {
+                     console.error('PNG conversion failed, falling back to SVG');
+                     URL.revokeObjectURL(svgUrl);
+                     vscode.postMessage({
+                         command: 'exportDiagram',
+                         svg: svg.outerHTML,
+                         format: 'svg',
+                         filename: 'sequence-diagram'
+                     });
+                 };
+                 
+                 img.src = svgUrl;
+             } else {
+                // SVG export
+                vscode.postMessage({
+                    command: 'exportDiagram',
+                    svg: svg.outerHTML,
+                    format: format,
+                    filename: 'sequence-diagram'
+                });
+            }
+        }
+        
+        // Copy diagram code function
+        function copyDiagram() {
+            const mermaidCode = \`${mermaidCode}\`;
+            vscode.postMessage({
+                command: 'copyDiagram',
+                mermaidCode: mermaidCode
+            });
+        }
+        
+        // Toggle code view
+        function toggleCode() {
+            const codeBlock = document.getElementById('code-block');
+            codeBlock.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>`;
   }
 
   /**

@@ -242,6 +242,11 @@
         "command": "nestjsDashboard.exportCallGraph",
         "title": "Export Call Graph",
         "icon": "$(export)"
+      },
+      {
+        "command": "nestjsDashboard.showEndpointSequence",
+        "title": "Show Sequence Flow",
+        "icon": "$(graph-line)"
       }
     ],
     "viewsContainers": {
@@ -331,6 +336,11 @@
           "command": "nestjsDashboard.showControllerCallGraph",
           "when": "view == apiEndpoints && viewItem == controller",
           "group": "inline@2"
+        },
+        {
+          "command": "nestjsDashboard.showEndpointSequence",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "inline@3"
         }
       ],
       "view/item/context": [
@@ -353,6 +363,11 @@
           "command": "nestjsDashboard.showControllerCallGraph",
           "when": "view == apiEndpoints && viewItem == controller",
           "group": "callgraph@1"
+        },
+        {
+          "command": "nestjsDashboard.showEndpointSequence",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "callgraph@2"
         }
       ],
       "commandPalette": [

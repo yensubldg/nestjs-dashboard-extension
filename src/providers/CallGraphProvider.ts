@@ -8,6 +8,8 @@ import { CallGraphParser } from "../parser/CallGraphParser";
 import { NestParser, EndpointInfo } from "../parser/NestParser";
 import { GraphTraversal } from "../utils/GraphTraversal";
 import { MermaidCallGraphWebview } from "../views/MermaidCallGraphWebview";
+import { SequenceFlowParser } from "../parser/SequenceFlowParser";
+import { SequenceDiagram } from "../models/SequenceModels";
 
 export class CallGraphProvider
   implements vscode.TreeDataProvider<CallGraphTreeNode>
@@ -21,12 +23,15 @@ export class CallGraphProvider
 
   private callGraph: CallGraph = { nodes: [], edges: [], rootNodes: [] };
   private selectedEndpoint: EndpointInfo | null = null;
+  private sequenceParser: SequenceFlowParser;
 
   constructor(
     private callGraphParser: CallGraphParser,
     private nestParser: NestParser,
     private webviewProvider?: MermaidCallGraphWebview
-  ) {}
+  ) {
+    this.sequenceParser = new SequenceFlowParser(callGraphParser);
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -817,6 +822,78 @@ export class CallGraphProvider
         return `delete${entityName}`;
       default:
         return `process${entityName}`;
+    }
+  }
+
+  /**
+   * Show sequence diagram for endpoint
+   */
+  public async showEndpointSequence(endpoint: EndpointInfo): Promise<void> {
+    try {
+      const sequenceDiagram = this.sequenceParser.generateSequenceFromEndpoint(
+        endpoint,
+        {
+          includeReturnMessages: true,
+          includeDatabase: true,
+          includeMiddleware: true,
+          showParameterTypes: false,
+        }
+      );
+
+      const title = `${endpoint.method} ${endpoint.path} - Sequence Flow`;
+
+      if (this.webviewProvider) {
+        this.webviewProvider.showSequence(sequenceDiagram, title);
+      } else {
+        vscode.window.showInformationMessage(
+          `Sequence diagram generated with ${sequenceDiagram.participants.length} participants and ${sequenceDiagram.messages.length} messages.`
+        );
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to generate sequence diagram: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Show sequence diagram for all endpoints
+   */
+  public async showAllSequences(): Promise<void> {
+    try {
+      const endpoints = this.nestParser.parseEndpoints();
+      if (endpoints.length === 0) {
+        vscode.window.showInformationMessage(
+          "No endpoints found to generate sequence diagrams"
+        );
+        return;
+      }
+
+      if (endpoints.length === 1) {
+        // If only one endpoint, show it directly
+        await this.showEndpointSequence(endpoints[0]);
+        return;
+      }
+
+      // Show selection dialog for multiple endpoints
+      const items = endpoints.map((endpoint) => ({
+        label: `${endpoint.method} ${endpoint.path}`,
+        description: `${endpoint.controller} - ${endpoint.handlerName}`,
+        endpoint: endpoint,
+      }));
+
+      const selectedItem = await vscode.window.showQuickPick(items, {
+        placeHolder: "Select an endpoint to show sequence diagram",
+        matchOnDescription: true,
+      });
+
+      if (selectedItem) {
+        await this.showEndpointSequence(selectedItem.endpoint);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to generate sequence diagrams: ${error}`
+      );
     }
   }
 }
