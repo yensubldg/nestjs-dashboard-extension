@@ -47,7 +47,7 @@ We welcome various types of contributions:
 
 ```bash
 # Fork the repository on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/nestjs-dashboard-extension.git
+git clone https://github.com/yensubldg/nestjs-dashboard-extension.git
 cd nestjs-dashboard-extension
 ```
 
