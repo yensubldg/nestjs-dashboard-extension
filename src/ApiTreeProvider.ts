@@ -33,14 +33,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
         "symbol-class",
         new vscode.ThemeColor("symbolIcon.classForeground")
       );
-      item.tooltip = `${element.name} (${element.endpoints.length} endpoints)\nClick the beaker icon to generate tests`;
-
-      // Add command for click action
-      item.command = {
-        command: "nestjsDashboard.generateControllerTests",
-        title: "Generate Controller Tests",
-        arguments: [element],
-      };
+      item.tooltip = `${element.name} (${element.endpoints.length} endpoints)\nRight-click to generate tests or expand to see endpoints`;
 
       return item;
     } else if (this.isEndpointNode(element)) {
@@ -56,12 +49,12 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
       }
 
       item.contextValue = "endpoint";
-      item.tooltip = `${element.method} ${element.path}\nClick the beaker icon to generate test`;
+      item.tooltip = `${element.method} ${element.path}\nLine: ${element.lineNumber}\nController: ${element.controller}\nRight-click for options`;
 
-      // Add command for click action
+      // Add command for navigation to file
       item.command = {
-        command: "nestjsDashboard.generateTest",
-        title: "Generate Test",
+        command: "nestjsDashboard.openEndpoint",
+        title: "Open Endpoint",
         arguments: [element],
       };
 
