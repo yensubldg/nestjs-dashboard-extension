@@ -1,6 +1,13 @@
 import * as path from "path";
 import { workspace } from "vscode";
-import { Project, SyntaxKind, StringLiteral } from "ts-morph";
+import {
+  Project,
+  SyntaxKind,
+  StringLiteral,
+  MethodDeclaration,
+  Decorator,
+} from "ts-morph";
+import { ConfigurationManager } from "../ConfigurationManager";
 
 export interface EndpointInfo {
   method: string;
@@ -8,8 +15,18 @@ export interface EndpointInfo {
   controller: string;
   handlerName: string;
   summary?: string;
+  description?: string;
   filePath: string;
   lineNumber: number;
+  inputDto?: string;
+  outputDto?: string;
+  guards?: string[];
+  middlewares?: string[];
+  pipes?: string[];
+  interceptors?: string[];
+  tags?: string[];
+  isPublic?: boolean;
+  module?: string;
 }
 
 export interface EntityInfo {
@@ -18,15 +35,146 @@ export interface EntityInfo {
   properties: PropertyInfo[];
   filePath: string;
   lineNumber: number;
+  module?: string;
+  imports?: string[];
+  relationships?: RelationshipInfo[];
 }
 
 export interface PropertyInfo {
   name: string;
   type: string;
   decorators: string[];
+  isOptional?: boolean;
+  defaultValue?: string;
+  validationRules?: string[];
+}
+
+export interface RelationshipInfo {
+  type: "OneToOne" | "OneToMany" | "ManyToOne" | "ManyToMany";
+  target: string;
+  property: string;
+}
+
+export interface MonorepoInfo {
+  apps: string[];
+  libs: string[];
+  selectedApp?: string;
+}
+
+export interface SwaggerInfo {
+  isEnabled: boolean;
+  setupPath?: string;
+  documentPath?: string;
+  title?: string;
+  version?: string;
 }
 
 export class NestParser {
+  private config = ConfigurationManager.getInstance();
+
+  private extractDecorators(method: MethodDeclaration): {
+    guards: string[];
+    pipes: string[];
+    interceptors: string[];
+    tags: string[];
+    isPublic: boolean;
+  } {
+    const guards: string[] = [];
+    const pipes: string[] = [];
+    const interceptors: string[] = [];
+    const tags: string[] = [];
+    let isPublic = false;
+
+    method.getDecorators().forEach((decorator: Decorator) => {
+      const name = decorator.getName();
+
+      if (name === "UseGuards") {
+        const args = decorator.getArguments();
+        args.forEach((arg) => {
+          guards.push(arg.getText().replace(/\(\)/g, ""));
+        });
+      } else if (name === "UsePipes") {
+        const args = decorator.getArguments();
+        args.forEach((arg) => {
+          pipes.push(arg.getText().replace(/\(\)/g, ""));
+        });
+      } else if (name === "UseInterceptors") {
+        const args = decorator.getArguments();
+        args.forEach((arg) => {
+          interceptors.push(arg.getText().replace(/\(\)/g, ""));
+        });
+      } else if (name === "Public") {
+        isPublic = true;
+      } else if (name === "ApiTags") {
+        const args = decorator.getArguments();
+        args.forEach((arg) => {
+          if (arg.getKind() === SyntaxKind.StringLiteral) {
+            tags.push((arg as StringLiteral).getLiteralText());
+          }
+        });
+      }
+    });
+
+    return { guards, pipes, interceptors, tags, isPublic };
+  }
+
+  private extractDTOInfo(method: MethodDeclaration): {
+    inputDto?: string;
+    outputDto?: string;
+  } {
+    let inputDto: string | undefined;
+    let outputDto: string | undefined;
+
+    // Extract input DTO from @Body() decorator or method parameters
+    const parameters = method.getParameters();
+    parameters.forEach((param) => {
+      const bodyDecorator = param.getDecorator("Body");
+      if (bodyDecorator) {
+        const typeNode = param.getTypeNode();
+        if (typeNode) {
+          inputDto = typeNode.getText();
+        }
+      }
+    });
+
+    // Extract output DTO from return type annotation
+    const returnType = method.getReturnTypeNode();
+    if (returnType) {
+      outputDto = returnType.getText();
+    }
+
+    return { inputDto, outputDto };
+  }
+
+  private getModuleName(filePath: string): string {
+    // Extract module name from file path for monorepo support
+    const pathParts = filePath.split(path.sep);
+    const appsIndex = pathParts.findIndex((part) => part === "apps");
+    const libsIndex = pathParts.findIndex((part) => part === "libs");
+
+    if (appsIndex !== -1 && appsIndex + 1 < pathParts.length) {
+      return `apps/${pathParts[appsIndex + 1]}`;
+    } else if (libsIndex !== -1 && libsIndex + 1 < pathParts.length) {
+      return `libs/${pathParts[libsIndex + 1]}`;
+    }
+
+    return "main";
+  }
+
+  private getSearchPatterns(): string[] {
+    if (this.config.monorepoMode) {
+      const selectedApp = this.config.selectedApp;
+      if (selectedApp) {
+        return [`apps/${selectedApp}/**/*.ts`, "libs/**/*.ts"];
+      }
+      return ["apps/**/*.ts", "libs/**/*.ts", "src/**/*.ts"];
+    }
+
+    // Use configured root folder
+    const rootFolder = this.config.rootFolder;
+    return [`${rootFolder}/**/*.ts`];
+  }
+
   parseEndpoints(): EndpointInfo[] {
     const endpoints: EndpointInfo[] = [];
     const folders = workspace.workspaceFolders;
@@ -40,7 +188,8 @@ export class NestParser {
       skipAddingFilesFromTsConfig: true,
     });
 
-    const patterns = ["src/**/*.ts", "apps/**/*.ts", "libs/**/*.ts"];
+    // Use configuration-aware patterns
+    const patterns = this.getSearchPatterns();
     patterns.forEach((pattern) => {
       project.addSourceFilesAtPaths(path.join(rootPath, pattern));
     });
@@ -93,14 +242,29 @@ export class NestParser {
                           summary = comment.split(/\r?\n/)[0];
                         }
                       }
+
+                      // Extract enhanced metadata
+                      const decoratorInfo = this.extractDecorators(method);
+                      const dtoInfo = this.extractDTOInfo(method);
+
                       endpoints.push({
                         method: decoName.toUpperCase(),
                         path: fullPath,
                         controller: cls.getName() || "",
                         handlerName: method.getName(),
                         summary,
+                        description: summary,
                         filePath: sourceFile.getFilePath(),
                         lineNumber: method.getStartLineNumber(),
+                        inputDto: dtoInfo.inputDto,
+                        outputDto: dtoInfo.outputDto,
+                        guards: decoratorInfo.guards,
+                        middlewares: [], // Will be enhanced later
+                        pipes: decoratorInfo.pipes,
+                        interceptors: decoratorInfo.interceptors,
+                        tags: decoratorInfo.tags,
+                        isPublic: decoratorInfo.isPublic,
+                        module: this.getModuleName(sourceFile.getFilePath()),
                       });
                     }
                   });
@@ -125,8 +289,9 @@ export class NestParser {
       skipAddingFilesFromTsConfig: true,
     });
 
-    const patterns = ["src/**/*.ts", "apps/**/*.ts", "libs/**/*.ts"];
-    patterns.forEach((pattern) => {
+    // Use the same configuration-aware patterns
+    const patterns = this.getSearchPatterns();
+    patterns.forEach((pattern: string) => {
       project.addSourceFilesAtPaths(path.join(rootPath, pattern));
     });
 
@@ -163,6 +328,12 @@ export class NestParser {
                   name: prop.getName(),
                   type: typeText,
                   decorators,
+                  isOptional: prop.hasQuestionToken(),
+                  defaultValue: prop.getInitializer()?.getText(),
+                  validationRules: decorators.filter(
+                    (d) =>
+                      d.includes("Is") || d.includes("Min") || d.includes("Max")
+                  ),
                 });
               });
 
@@ -172,6 +343,9 @@ export class NestParser {
                 properties,
                 filePath: sourceFile.getFilePath(),
                 lineNumber: cls.getStartLineNumber(),
+                module: undefined,
+                imports: [],
+                relationships: [],
               });
             }
           });

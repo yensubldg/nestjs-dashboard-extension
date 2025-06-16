@@ -33,20 +33,35 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
         "symbol-class",
         new vscode.ThemeColor("symbolIcon.classForeground")
       );
+      item.tooltip = `${element.name} (${element.endpoints.length} endpoints)\nClick the beaker icon to generate tests`;
+
+      // Add command for click action
+      item.command = {
+        command: "nestjsDashboard.generateControllerTests",
+        title: "Generate Controller Tests",
+        arguments: [element],
+      };
+
       return item;
-    } else {
+    } else if (this.isEndpointNode(element)) {
       const label = `${element.method} ${element.path}`;
       const item = new vscode.TreeItem(
         label,
         vscode.TreeItemCollapsibleState.None
       );
+
+      // Keep summary in description if it exists
       if (element.summary) {
         item.description = element.summary;
       }
+
       item.contextValue = "endpoint";
+      item.tooltip = `${element.method} ${element.path}\nClick the beaker icon to generate test`;
+
+      // Add command for click action
       item.command = {
-        command: "nestjsDashboard.openEndpoint",
-        title: "Open Endpoint",
+        command: "nestjsDashboard.generateTest",
+        title: "Generate Test",
         arguments: [element],
       };
 
@@ -103,6 +118,12 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
       }
 
       return item;
+    } else {
+      // Fallback for unknown node types
+      return new vscode.TreeItem(
+        "Unknown",
+        vscode.TreeItemCollapsibleState.None
+      );
     }
   }
 
@@ -119,6 +140,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
       grouped.forEach((eps, name) => {
         controllers.push({ type: "controller", name, endpoints: eps });
       });
+
       return Promise.resolve(controllers);
     } else if (this.isControllerNode(element)) {
       return Promise.resolve(element.endpoints);
@@ -129,5 +151,11 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
 
   private isControllerNode(element: ApiNode): element is ControllerNode {
     return (element as any).type === "controller";
+  }
+
+  private isEndpointNode(element: ApiNode): element is EndpointInfo {
+    return (
+      (element as any).type !== "controller" && element.hasOwnProperty("method")
+    );
   }
 }
