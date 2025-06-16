@@ -1,11 +1,79 @@
+# Source files and development directories
 .vscode/**
 .vscode-test/**
 src/**
-.gitignore
-.yarnrc
+.github/**
+
+# Build and development files
+node_modules/**
+out/**
+tsconfig.json
+.eslintrc.json
+eslint.config.mjs
+esbuild.js
+.vscode-test.mjs
+
+# Development documentation
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/.eslintrc.json
-**/*.map
+CONTRIBUTING.md
+IMPLEMENTATION_STATUS.md
+
+# Git and version control
+.git/**
+.gitignore
+.gitattributes
+
+# Package management
+.yarnrc
+.npmrc
+package-lock.json
+yarn.lock
+
+# TypeScript and source maps
 **/*.ts
-.github/
+**/*.map
+**/*.js.map
+
+# Test files
+**/*.test.*
+**/*.spec.*
+test/**
+tests/**
+__tests__/**
+
+# Documentation (keep only essential)
+# README.md and CHANGELOG.md are kept for marketplace
+
+# Development dependencies and tools
+coverage/**
+.nyc_output/**
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# Log files
+*.log
+logs/**
+
+# Temporary files
+tmp/**
+temp/**
+
+# Only keep the essential files:
+# - dist/extension.js (main bundle)
+# - package.json
+# - README.md
+# - CHANGELOG.md
+# - LICENSE
+# - media/* (icons and assets)
