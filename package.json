@@ -2,7 +2,7 @@
   "name": "nestjs-dashboard",
   "displayName": "NestJS Dashboard",
   "description": "A VSCode extension to display NestJS HTTP API endpoints in a dashboard view",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "publisher": "yensubldg",
   "author": {
     "name": "yensubldg",
@@ -10,7 +10,7 @@
   },
   "icon": "media/logo.png",
   "engines": {
-    "vscode": "^1.50.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "Other"
@@ -42,22 +42,132 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "NestJS Dashboard",
+      "properties": {
+        "nestjsDashboard.rootFolder": {
+          "type": "string",
+          "default": "src",
+          "description": "Root folder to scan for NestJS files (e.g., 'src', 'apps/api')"
+        },
+        "nestjsDashboard.enabledRouteGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["public", "private", "admin"],
+          "description": "Route groups to display in the dashboard"
+        },
+        "nestjsDashboard.showMethodColors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable custom colors for HTTP methods in sidebar"
+        },
+        "nestjsDashboard.enableHoverTooltips": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show detailed tooltips when hovering over endpoints"
+        },
+        "nestjsDashboard.monorepoMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable monorepo support (scan apps/ and libs/ folders)"
+        },
+        "nestjsDashboard.selectedApp": {
+          "type": "string",
+          "default": "",
+          "description": "Selected app in monorepo mode"
+        },
+        "nestjsDashboard.enableSwaggerIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Swagger viewer integration"
+        },
+        "nestjsDashboard.enableTestGeneration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable auto-generation of API test files"
+        },
+        "nestjsDashboard.useGitHubCopilot": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use GitHub Copilot for intelligent test generation (requires GitHub Copilot extension)"
+        },
+        "nestjsDashboard.copilotModel": {
+          "type": "string",
+          "default": "gpt-4o",
+          "enum": ["gpt-4o", "gpt-4", "gpt-3.5-turbo"],
+          "enumDescriptions": [
+            "GPT-4o - Latest and most capable model (recommended)",
+            "GPT-4 - High quality, good for complex tasks",
+            "GPT-3.5 Turbo - Faster but less capable"
+          ],
+          "description": "GitHub Copilot model to use for test generation"
+        }
+      }
+    },
     "commands": [
       {
         "command": "nestjsDashboard.refresh",
-        "title": "Refresh API Endpoints"
+        "title": "NestJS Dashboard: Refresh API Endpoints",
+        "icon": "$(refresh)"
       },
       {
         "command": "nestjsDashboard.openEndpoint",
-        "title": "Open Endpoint"
+        "title": "NestJS Dashboard: Open Endpoint"
       },
       {
         "command": "nestjsDashboard.openEntity",
-        "title": "Open Entity"
+        "title": "NestJS Dashboard: Open Entity"
       },
       {
         "command": "nestjsDashboard.expandAndOpenEntity",
-        "title": "Expand and Open Entity"
+        "title": "NestJS Dashboard: Expand and Open Entity"
+      },
+      {
+        "command": "nestjsDashboard.showStatistics",
+        "title": "NestJS Dashboard: Show Statistics Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "nestjsDashboard.selectApp",
+        "title": "NestJS Dashboard: Select App (Monorepo)",
+        "icon": "$(folder-library)"
+      },
+      {
+        "command": "nestjsDashboard.toggleMonorepoMode",
+        "title": "NestJS Dashboard: Toggle Monorepo Mode",
+        "icon": "$(repo)"
+      },
+      {
+        "command": "nestjsDashboard.generateTest",
+        "title": "NestJS Dashboard: Generate Test for Endpoint",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "nestjsDashboard.generateControllerTests",
+        "title": "NestJS Dashboard: Generate Tests for Controller",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "nestjsDashboard.openSwagger",
+        "title": "NestJS Dashboard: Open Swagger UI",
+        "icon": "$(browser)"
+      },
+      {
+        "command": "nestjsDashboard.createSwaggerSetup",
+        "title": "NestJS Dashboard: Create Swagger Setup",
+        "icon": "$(file-add)"
+      },
+      {
+        "command": "nestjsDashboard.configureCopilot",
+        "title": "NestJS Dashboard: Configure GitHub Copilot",
+        "icon": "$(robot)"
+      },
+      {
+        "command": "nestjsDashboard.selectCopilotModel",
+        "title": "NestJS Dashboard: Select Copilot Model",
+        "icon": "$(settings-gear)"
       }
     ],
     "viewsContainers": {
@@ -72,12 +182,75 @@
     "views": {
       "nestjsDashboard": [
         {
+          "id": "copilotModel",
+          "name": "GitHub Copilot",
+          "when": "config.nestjsDashboard.useGitHubCopilot"
+        },
+        {
           "id": "apiEndpoints",
           "name": "API Endpoints"
         },
         {
           "id": "entities",
           "name": "Entities"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "nestjsDashboard.refresh",
+          "when": "view == apiEndpoints",
+          "group": "navigation"
+        },
+        {
+          "command": "nestjsDashboard.showStatistics",
+          "when": "view == apiEndpoints",
+          "group": "navigation"
+        },
+        {
+          "command": "nestjsDashboard.selectApp",
+          "when": "view == apiEndpoints",
+          "group": "navigation"
+        }
+      ],
+      "view/item/inline": [
+        {
+          "command": "nestjsDashboard.generateTest",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "inline@1"
+        },
+        {
+          "command": "nestjsDashboard.generateControllerTests",
+          "when": "view == apiEndpoints && viewItem == controller",
+          "group": "inline@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "nestjsDashboard.generateTest",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "generation"
+        },
+        {
+          "command": "nestjsDashboard.generateControllerTests",
+          "when": "view == apiEndpoints && viewItem == controller",
+          "group": "generation"
+        }
+      ],
+
+      "commandPalette": [
+        {
+          "command": "nestjsDashboard.generateControllerTests",
+          "when": "workspaceHasNestProject"
+        },
+        {
+          "command": "nestjsDashboard.configureCopilot",
+          "when": "workspaceHasNestProject"
+        },
+        {
+          "command": "nestjsDashboard.selectCopilotModel",
+          "when": "workspaceHasNestProject"
         }
       ]
     }
@@ -95,11 +268,12 @@
     "publish": "vsce publish"
   },
   "dependencies": {
-    "ts-morph": "^13.0.0"
+    "ts-morph": "^13.0.0",
+    "glob": "^10.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.14.37",
-    "@types/vscode": "^1.50.0",
+    "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.5",
     "typescript": "^4.2.3"
   }
