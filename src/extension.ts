@@ -9,6 +9,9 @@ import { StatisticsWebview } from "./views/StatisticsWebview";
 import { MonorepoDetector } from "./parser/MonorepoDetector";
 import { TestGenerator } from "./generators/TestGenerator";
 import { SwaggerParser } from "./parser/SwaggerParser";
+import { CallGraphParser } from "./parser/CallGraphParser";
+import { CallGraphProvider } from "./providers/CallGraphProvider";
+import { MermaidCallGraphWebview } from "./views/MermaidCallGraphWebview";
 
 export function activate(context: vscode.ExtensionContext) {
   const config = ConfigurationManager.getInstance();
@@ -21,6 +24,15 @@ export function activate(context: vscode.ExtensionContext) {
   const statisticsWebview = new StatisticsWebview(context, parser);
   const testGenerator = new TestGenerator();
   const swaggerParser = new SwaggerParser();
+  const callGraphParser = new CallGraphParser();
+  const mermaidCallGraphWebview = new MermaidCallGraphWebview(
+    context.extensionUri
+  );
+  const callGraphProvider = new CallGraphProvider(
+    callGraphParser,
+    parser,
+    mermaidCallGraphWebview
+  );
 
   // Register tree views using createTreeView for better control
   const apiTreeView = vscode.window.createTreeView("apiEndpoints", {
@@ -37,7 +49,17 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider: copilotModelProvider,
   });
 
-  context.subscriptions.push(apiTreeView, entityTreeView, copilotModelTreeView);
+  const callGraphTreeView = vscode.window.createTreeView("callGraph", {
+    treeDataProvider: callGraphProvider,
+    showCollapseAll: true,
+  });
+
+  context.subscriptions.push(
+    apiTreeView,
+    entityTreeView,
+    copilotModelTreeView,
+    callGraphTreeView
+  );
 
   const hoverDisposable = vscode.languages.registerHoverProvider(
     { scheme: "file", language: "typescript" },
@@ -50,6 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
       apiTreeDataProvider.refresh();
       entityTreeDataProvider.refresh();
       copilotModelProvider.refresh();
+      callGraphProvider.refresh();
       hoverProvider.refreshCache();
     }),
     vscode.commands.registerCommand(
@@ -124,64 +147,82 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "nestjsDashboard.generateTest",
       async (endpoint) => {
-        if (config.enableTestGeneration && endpoint) {
+        try {
+          if (!config.enableTestGeneration) {
+            vscode.window.showErrorMessage(
+              "Test generation is disabled in settings"
+            );
+            return;
+          }
+
+          if (!endpoint) {
+            vscode.window.showErrorMessage("No endpoint selected");
+            return;
+          }
+
           await testGenerator.generateTestForEndpoint(endpoint);
-        } else {
-          vscode.window.showErrorMessage(
-            "Test generation is disabled or no endpoint selected"
-          );
+        } catch (error) {
+          vscode.window.showErrorMessage(`Failed to generate test: ${error}`);
+          console.error("Test generation error:", error);
         }
       }
     ),
     vscode.commands.registerCommand(
       "nestjsDashboard.generateControllerTests",
       async (controller) => {
-        if (!config.enableTestGeneration) {
+        try {
+          if (!config.enableTestGeneration) {
+            vscode.window.showErrorMessage(
+              "Test generation is disabled in settings"
+            );
+            return;
+          }
+
+          let selectedController: string;
+          let controllerEndpoints: EndpointInfo[];
+
+          if (controller && controller.name) {
+            selectedController = controller.name;
+            controllerEndpoints = controller.endpoints;
+          } else {
+            const endpoints = parser.parseEndpoints();
+            const controllers = [
+              ...new Set(endpoints.map((ep) => ep.controller)),
+            ];
+
+            if (controllers.length === 0) {
+              vscode.window.showInformationMessage("No controllers found");
+              return;
+            }
+
+            const selected = await vscode.window.showQuickPick(controllers, {
+              placeHolder: "Select controller to generate tests for",
+            });
+
+            if (!selected) {
+              return;
+            }
+
+            selectedController = selected;
+            controllerEndpoints = endpoints.filter(
+              (ep) => ep.controller === selected
+            );
+          }
+
+          if (controllerEndpoints.length === 0) {
+            vscode.window.showInformationMessage(
+              `No endpoints found for ${selectedController}`
+            );
+            return;
+          }
+
+          await testGenerator.generateTestsForController(controllerEndpoints);
+        } catch (error) {
           vscode.window.showErrorMessage(
-            "Test generation is disabled in settings"
+            `Failed to generate controller tests: ${error}`
           );
-          return;
+          console.error("Controller test generation error:", error);
         }
-
-        let selectedController: string;
-        let controllerEndpoints: EndpointInfo[];
-
-        if (controller && controller.name) {
-          selectedController = controller.name;
-          controllerEndpoints = controller.endpoints;
-        } else {
-          const endpoints = parser.parseEndpoints();
-          const controllers = [
-            ...new Set(endpoints.map((ep) => ep.controller)),
-          ];
-
-          if (controllers.length === 0) {
-            vscode.window.showInformationMessage("No controllers found");
-            return;
-          }
-
-          const selected = await vscode.window.showQuickPick(controllers, {
-            placeHolder: "Select controller to generate tests for",
-          });
-
-          if (!selected) {
-            return;
-          }
-
-          selectedController = selected;
-          controllerEndpoints = endpoints.filter(
-            (ep) => ep.controller === selected
-          );
-        }
-
-        if (controllerEndpoints.length === 0) {
-          vscode.window.showInformationMessage(
-            `No endpoints found for ${selectedController}`
-          );
-          return;
-        }
-
-        await testGenerator.generateTestsForController(controllerEndpoints);
       }
     ),
     vscode.commands.registerCommand("nestjsDashboard.openSwagger", async () => {
@@ -427,13 +468,75 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
       }
-    )
+    ),
+
+    vscode.commands.registerCommand(
+      "nestjsDashboard.showEndpointFlow",
+      (endpoint: EndpointInfo) => {
+        if (endpoint) {
+          callGraphProvider.showEnhancedCallGraph(endpoint);
+        }
+      }
+    ),
+
+    vscode.commands.registerCommand(
+      "nestjsDashboard.showControllerCallGraph",
+      (controller: any) => {
+        if (controller && controller.name) {
+          callGraphProvider.showControllerCallGraph(controller.name);
+        }
+      }
+    ),
+
+    vscode.commands.registerCommand(
+      "nestjsDashboard.openCallGraphNode",
+      (filePath: string, lineNumber: number) => {
+        if (filePath && lineNumber) {
+          const uri = vscode.Uri.file(filePath);
+          vscode.window.showTextDocument(uri).then((editor) => {
+            const position = new vscode.Position(
+              Math.max(0, lineNumber - 1),
+              0
+            );
+            editor.selection = new vscode.Selection(position, position);
+            editor.revealRange(new vscode.Range(position, position));
+          });
+        }
+      }
+    ),
+
+    vscode.commands.registerCommand("nestjsDashboard.refreshCallGraph", () => {
+      callGraphParser.refresh();
+      callGraphProvider.refresh();
+    }),
+
+    vscode.commands.registerCommand("nestjsDashboard.clearCallGraph", () => {
+      callGraphProvider.clearCallGraph();
+    }),
+
+    vscode.commands.registerCommand("nestjsDashboard.exportCallGraph", () => {
+      const callGraph = callGraphProvider.getCurrentCallGraph();
+      if (callGraph.nodes.length === 0) {
+        vscode.window.showWarningMessage("No call graph data to export");
+        return;
+      }
+
+      const visualizer = config.callGraphVisualizer;
+      if (visualizer === "mermaid") {
+        mermaidCallGraphWebview.show(callGraph, "Call Graph Export");
+      } else {
+        vscode.window.showInformationMessage(
+          `Export for ${visualizer} visualizer is coming soon`
+        );
+      }
+    })
   );
 
   const configWatcher = config.onConfigurationChanged(() => {
     apiTreeDataProvider.refresh();
     entityTreeDataProvider.refresh();
     copilotModelProvider.refresh();
+    callGraphProvider.refresh();
     hoverProvider.refreshCache();
   });
   context.subscriptions.push(configWatcher);
@@ -442,6 +545,7 @@ export function activate(context: vscode.ExtensionContext) {
   const refreshAll = () => {
     apiTreeDataProvider.refresh();
     entityTreeDataProvider.refresh();
+    callGraphProvider.refresh();
     hoverProvider.refreshCache();
   };
 

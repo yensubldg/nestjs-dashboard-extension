@@ -58,6 +58,35 @@ export class ConfigurationManager {
     return this.getConfig().get("copilotModel", "gpt-4o");
   }
 
+  // Call Graph Configuration
+  get callGraphVisualizer(): string {
+    return this.getConfig().get("callGraph.visualizer", "mermaid");
+  }
+
+  get callGraphMaxDepth(): number {
+    return this.getConfig().get("callGraph.maxDepth", 4);
+  }
+
+  get callGraphIncludeEntities(): boolean {
+    return this.getConfig().get("callGraph.includeEntities", true);
+  }
+
+  get callGraphIncludeGuards(): boolean {
+    return this.getConfig().get("callGraph.includeGuards", true);
+  }
+
+  get callGraphIncludePipes(): boolean {
+    return this.getConfig().get("callGraph.includePipes", false);
+  }
+
+  get callGraphIncludeInterceptors(): boolean {
+    return this.getConfig().get("callGraph.includeInterceptors", false);
+  }
+
+  get callGraphEnabled(): boolean {
+    return this.getConfig().get("callGraph.enableCallGraph", true);
+  }
+
   async updateSelectedApp(appName: string): Promise<void> {
     await this.getConfig().update(
       "selectedApp",

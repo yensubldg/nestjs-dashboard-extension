@@ -105,6 +105,49 @@
             "GPT-3.5 Turbo - Faster but less capable"
           ],
           "description": "GitHub Copilot model to use for test generation"
+        },
+        "nestjsDashboard.callGraph.visualizer": {
+          "type": "string",
+          "default": "mermaid",
+          "enum": ["mermaid", "cytoscape", "tree"],
+          "enumDescriptions": [
+            "Mermaid - Static flowchart diagrams with export options",
+            "Cytoscape - Interactive graph with advanced layouts",
+            "Tree - Hierarchical tree view in sidebar"
+          ],
+          "description": "Preferred call graph visualizer"
+        },
+        "nestjsDashboard.callGraph.maxDepth": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum depth for call graph analysis"
+        },
+        "nestjsDashboard.callGraph.includeEntities": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include entity relationships in call graph"
+        },
+        "nestjsDashboard.callGraph.includeGuards": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include guards in call graph"
+        },
+        "nestjsDashboard.callGraph.includePipes": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include pipes in call graph"
+        },
+        "nestjsDashboard.callGraph.includeInterceptors": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include interceptors in call graph"
+        },
+        "nestjsDashboard.callGraph.enableCallGraph": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable call graph functionality"
         }
       }
     },
@@ -170,6 +213,35 @@
         "command": "nestjsDashboard.selectCopilotModel",
         "title": "NestJS Dashboard: Select Copilot Model",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "nestjsDashboard.showEndpointFlow",
+        "title": "Show Execution Flow",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "nestjsDashboard.showControllerCallGraph",
+        "title": "Show Controller Call Graph",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
+        "command": "nestjsDashboard.openCallGraphNode",
+        "title": "Open Call Graph Node"
+      },
+      {
+        "command": "nestjsDashboard.refreshCallGraph",
+        "title": "Refresh Call Graph",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nestjsDashboard.clearCallGraph",
+        "title": "Clear Call Graph",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "nestjsDashboard.exportCallGraph",
+        "title": "Export Call Graph",
+        "icon": "$(export)"
       }
     ],
     "viewsContainers": {
@@ -198,6 +270,11 @@
           "id": "entities",
           "name": "Entities",
           "icon": ""
+        },
+        {
+          "id": "callGraph",
+          "name": "Call Graph",
+          "when": "config.nestjsDashboard.callGraph.enableCallGraph"
         }
       ]
     },
@@ -217,6 +294,21 @@
           "command": "nestjsDashboard.selectApp",
           "when": "view == apiEndpoints",
           "group": "navigation"
+        },
+        {
+          "command": "nestjsDashboard.refreshCallGraph",
+          "when": "view == callGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "nestjsDashboard.clearCallGraph",
+          "when": "view == callGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "nestjsDashboard.exportCallGraph",
+          "when": "view == callGraph",
+          "group": "navigation"
         }
       ],
       "view/item/inline": [
@@ -229,6 +321,16 @@
           "command": "nestjsDashboard.generateControllerTests",
           "when": "view == apiEndpoints && viewItem == controller",
           "group": "inline@1"
+        },
+        {
+          "command": "nestjsDashboard.showEndpointFlow",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "inline@2"
+        },
+        {
+          "command": "nestjsDashboard.showControllerCallGraph",
+          "when": "view == apiEndpoints && viewItem == controller",
+          "group": "inline@2"
         }
       ],
       "view/item/context": [
@@ -241,6 +343,16 @@
           "command": "nestjsDashboard.generateControllerTests",
           "when": "view == apiEndpoints && viewItem == controller",
           "group": "generation"
+        },
+        {
+          "command": "nestjsDashboard.showEndpointFlow",
+          "when": "view == apiEndpoints && viewItem == endpoint",
+          "group": "callgraph@1"
+        },
+        {
+          "command": "nestjsDashboard.showControllerCallGraph",
+          "when": "view == apiEndpoints && viewItem == controller",
+          "group": "callgraph@1"
         }
       ],
       "commandPalette": [
