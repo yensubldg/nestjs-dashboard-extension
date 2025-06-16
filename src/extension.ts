@@ -489,6 +489,15 @@ export function activate(context: vscode.ExtensionContext) {
     ),
 
     vscode.commands.registerCommand(
+      "nestjsDashboard.showEndpointSequence",
+      (endpoint: EndpointInfo) => {
+        if (endpoint) {
+          callGraphProvider.showEndpointSequence(endpoint);
+        }
+      }
+    ),
+
+    vscode.commands.registerCommand(
       "nestjsDashboard.openCallGraphNode",
       (filePath: string, lineNumber: number) => {
         if (filePath && lineNumber) {
