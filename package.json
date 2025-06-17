@@ -2,7 +2,7 @@
   "name": "nestjs-dashboard",
   "displayName": "NestJS Dashboard",
   "description": "A VSCode extension to display NestJS HTTP API endpoints in a dashboard view",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "yensubldg",
   "author": {
     "name": "yensubldg",
@@ -32,13 +32,7 @@
   },
   "homepage": "https://github.com/yensubldg/nestjs-dashboard-extension#readme",
   "activationEvents": [
-    "onLanguage:typescript",
-    "onView:apiEndpoints",
-    "onView:entities",
-    "onCommand:nestjsDashboard.refresh",
-    "onCommand:nestjsDashboard.openEndpoint",
-    "onCommand:nestjsDashboard.openEntity",
-    "onCommand:nestjsDashboard.expandAndOpenEntity"
+    "onLanguage:typescript"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -55,7 +49,11 @@
           "items": {
             "type": "string"
           },
-          "default": ["public", "private", "admin"],
+          "default": [
+            "public",
+            "private",
+            "admin"
+          ],
           "description": "Route groups to display in the dashboard"
         },
         "nestjsDashboard.showMethodColors": {
@@ -96,7 +94,11 @@
         "nestjsDashboard.copilotModel": {
           "type": "string",
           "default": "gpt-4o",
-          "enum": ["gpt-4o", "gpt-4", "gpt-3.5-turbo"],
+          "enum": [
+            "gpt-4o",
+            "gpt-4",
+            "gpt-3.5-turbo"
+          ],
           "enumDescriptions": [
             "GPT-4o - Latest and most capable model (recommended)",
             "GPT-4 - High quality, good for complex tasks",
@@ -184,15 +186,18 @@
         {
           "id": "copilotModel",
           "name": "GitHub Copilot",
-          "when": "config.nestjsDashboard.useGitHubCopilot"
+          "when": "config.nestjsDashboard.useGitHubCopilot",
+          "icon": ""
         },
         {
           "id": "apiEndpoints",
-          "name": "API Endpoints"
+          "name": "API Endpoints",
+          "icon": ""
         },
         {
           "id": "entities",
-          "name": "Entities"
+          "name": "Entities",
+          "icon": ""
         }
       ]
     },
@@ -238,7 +243,6 @@
           "group": "generation"
         }
       ],
-
       "commandPalette": [
         {
           "command": "nestjsDashboard.generateControllerTests",

@@ -60,8 +60,8 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiNode> {
 
       // Add command for click action
       item.command = {
-        command: "nestjsDashboard.generateTest",
-        title: "Generate Test",
+        command: "nestjsDashboard.openEndpoint",
+        title: "Open Endpoint",
         arguments: [element],
       };
 
